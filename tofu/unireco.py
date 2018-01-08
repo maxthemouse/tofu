@@ -5,9 +5,9 @@ import itertools
 import logging
 import numpy as np
 from gi.repository import Ufo
-from lamino import prepare_angular_arguments
 from preprocess import create_preprocessing_pipeline
-from util import get_reconstructed_cube_shape, get_reconstruction_regions
+from util import (get_reconstructed_cube_shape, get_reconstruction_regions, get_filenames,
+                  determine_shape)
 from tasks import get_task, get_writer
 
 
@@ -21,16 +21,41 @@ DTYPE_CL_SIZE = {'float': 4,
 
 
 def unireco(args):
+    if not args.overall_angle:
+        args.overall_angle = 360.
+        LOG.info('Overall angle not specified, using 360 deg')
+
+    if not args.number:
+        if len(args.axis_angle_z) > 1:
+            LOG.debug("--number not specified, using length of --axis-angle-z: %d",
+                      len(args.axis_angle_z))
+            args.number = len(args.axis_angle_z)
+        else:
+            num_files = len(get_filenames(args.projections))
+            if not num_files:
+                raise RuntimeError("No files found in `{}'".format(args.projections))
+            LOG.debug("--number not specified, using number of files matching "
+                      "--projections pattern: %d", num_files)
+            args.number = num_files
+
+    if args.dry_run:
+        if not args.number:
+            raise ValueError('--number must be specified by --dry-run')
+        determine_shape(args, args.projections, store=True)
+        LOG.info('Dummy data W x H x N: {} x {} x {}'.format(args.width,
+                                                             args.height,
+                                                             args.number))
+
+    _convert_angles_to_rad(args)
+    _set_projection_filter_scale(args)
+    x_region, y_region, z_region = get_reconstruction_regions(args)
+
     scheduler = Ufo.FixedScheduler()
     gpus = scheduler.get_resources().get_gpu_nodes()
     duration = 0
     for i, gpu in enumerate(gpus):
         print 'Max mem for {}: {:.2f} GB'.format(i, gpu.get_info(0) / 2 ** 30)
 
-    prepare_angular_arguments(args)
-    _convert_angles_to_rad(args)
-    _set_projection_filter_scale(args)
-    x_region, y_region, z_region = get_reconstruction_regions(args)
     runs = make_runs(gpus, x_region, y_region, z_region,
                      DTYPE_CL_SIZE[args.store_type],
                      slices_per_device=args.slices_per_device,

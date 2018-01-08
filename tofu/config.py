@@ -461,10 +461,6 @@ SECTIONS['universal-reconstruction'] = {
         'default': None,
         'type': restrict_value((0, None), dtype=int),
         'help': "Number of projections processed per kernel invocation"},
-    'angle': {
-        'default': None,
-        'type': float,
-        'help': "Angle step between projections in radians"},
     'x-region': {
         'default': "0,-1,1",
         'type': tupleize(num_items=3, conv=int),
