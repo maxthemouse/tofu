@@ -481,7 +481,7 @@ SECTIONS['universal-reconstruction'] = {
                     'detector-angle-x', 'detector-angle-y', 'detector-angle-z',
                     'detector-position-x', 'detector-position-y', 'detector-position-z',
                     'source-position-x', 'source-position-y', 'source-position-z',
-                    'center-x', 'center-y', 'z'],
+                    'center-position-x', 'center-position-y', 'z'],
         'help': "Parameter to vary along the reconstructed z-axis"},
     'region': {
         'default': "0,-1,1",
