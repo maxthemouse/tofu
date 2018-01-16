@@ -484,7 +484,7 @@ SECTIONS['universal-reconstruction'] = {
                     'center-position-x', 'center-position-y', 'z'],
         'help': "Parameter to vary along the reconstructed z-axis"},
     'region': {
-        'default': "0,-1,1",
+        'default': "0,1,1",
         'type': tupleize(num_items=3),
         'help': "z axis parameter region as from,to,step"},
     'source-position-x': {
@@ -560,7 +560,7 @@ SECTIONS['universal-reconstruction'] = {
         'default': 'clamp',
         'help': "Padded values assignment for the filtered projection"},
     'slice-gray-map': {
-        'default': (0.0, 0.0),
+        'default': "0,0",
         'type': tupleize(num_items=2, conv=float),
         'help': "Minimum and maximum gray value mapping if store-type is integer-based"}}
 
