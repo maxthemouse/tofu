@@ -21,33 +21,9 @@ DTYPE_CL_SIZE = {'float': 4,
 
 
 def unireco(args):
-    if not args.overall_angle:
-        args.overall_angle = 360.
-        LOG.info('Overall angle not specified, using 360 deg')
-
-    if not args.number:
-        if len(args.axis_angle_z) > 1:
-            LOG.debug("--number not specified, using length of --axis-angle-z: %d",
-                      len(args.axis_angle_z))
-            args.number = len(args.axis_angle_z)
-        else:
-            num_files = len(get_filenames(args.projections))
-            if not num_files:
-                raise RuntimeError("No files found in `{}'".format(args.projections))
-            LOG.debug("--number not specified, using number of files matching "
-                      "--projections pattern: %d", num_files)
-            args.number = num_files
-
-    if args.dry_run:
-        if not args.number:
-            raise ValueError('--number must be specified by --dry-run')
-        determine_shape(args, args.projections, store=True)
-        LOG.info('Dummy data W x H x N: {} x {} x {}'.format(args.width,
-                                                             args.height,
-                                                             args.number))
-
+    _fill_missing_args(args)
     _convert_angles_to_rad(args)
-    _set_projection_filter_scale(args)
+    set_projection_filter_scale(args)
     x_region, y_region, z_region = get_reconstruction_regions(args)
 
     scheduler = Ufo.FixedScheduler()
@@ -168,8 +144,8 @@ def _run(args, x_region, y_region, regions, run_number):
     for j, gpu_and_region in enumerate(regions):
         gpu_index, region = gpu_and_region
         region_index = run_number * len(gpus) + j
-        _setup_graph(args, graph, region_index, x_region, y_region, region,
-                     broadcast, gpu=gpus[gpu_index])
+        setup_graph(args, graph, x_region, y_region, region,
+                     broadcast, gpu=gpus[gpu_index], index=region_index)
         LOG.debug('Pass: %d, device: %d, region: %s', run_number + 1, gpu_index, region)
 
     scheduler.run(graph)
@@ -179,14 +155,16 @@ def _run(args, x_region, y_region, regions, run_number):
     return duration
 
 
-def _setup_graph(args, graph, index, x_region, y_region, region, source, gpu=None):
+def setup_graph(args, graph, x_region, y_region, region, source, gpu=None, do_output=True, index=0,
+                make_reader=False):
     backproject = get_task('general-backproject', processing_node=gpu)
 
-    if args.dry_run:
-        sink = get_task('null', processing_node=gpu, download=True)
-    else:
-        sink = get_writer(args)
-        sink.props.filename = '{}-{:>03}-%04i.tif'.format(args.output, index)
+    if do_output:
+        if args.dry_run:
+            sink = get_task('null', processing_node=gpu, download=True)
+        else:
+            sink = get_writer(args)
+            sink.props.filename = '{}-{:>03}-%04i.tif'.format(args.output, index)
 
     backproject.props.parameter = args.z_parameter
     if args.burst:
@@ -227,10 +205,12 @@ def _setup_graph(args, graph, index, x_region, y_region, region, source, gpu=Non
     else:
         first = create_preprocessing_pipeline(args, graph, source=source,
                                               processing_node=gpu,
-                                              cone_beam_weight=not args.disable_cone_beam_weight)
+                                              cone_beam_weight=not args.disable_cone_beam_weight,
+                                              make_reader=make_reader)
         graph.connect_nodes(first, backproject)
 
-    graph.connect_nodes(backproject, sink)
+    if do_output:
+        graph.connect_nodes(backproject, sink)
 
     return first
 
@@ -250,7 +230,7 @@ def _setup_source(args, graph):
     return source
 
 
-def _set_projection_filter_scale(args):
+def set_projection_filter_scale(args):
     is_parallel = np.all(np.isinf(args.source_position_y))
     magnification = (args.source_position_y[0] - args.detector_position_y[0]) / \
         args.source_position_y[0]
@@ -266,6 +246,35 @@ def _set_projection_filter_scale(args):
         if np.all(np.array(args.axis_angle_x) == 0):
             LOG.debug('Adjusting filter for cone beam tomography')
             args.projection_filter_scale /= magnification
+
+
+def _fill_missing_args(args):
+    if not args.overall_angle:
+        args.overall_angle = 360.
+        LOG.info('Overall angle not specified, using 360 deg')
+
+    if not args.number:
+        if len(args.axis_angle_z) > 1:
+            LOG.debug("--number not specified, using length of --axis-angle-z: %d",
+                      len(args.axis_angle_z))
+            args.number = len(args.axis_angle_z)
+        else:
+            num_files = len(get_filenames(args.projections))
+            if not num_files:
+                raise RuntimeError("No files found in `{}'".format(args.projections))
+            LOG.debug("--number not specified, using number of files matching "
+                      "--projections pattern: %d", num_files)
+            args.number = num_files
+
+    if args.dry_run:
+        if not args.number:
+            raise ValueError('--number must be specified by --dry-run')
+        determine_shape(args, args.projections, store=True)
+        LOG.info('Dummy data W x H x N: {} x {} x {}'.format(args.width,
+                                                             args.height,
+                                                             args.number))
+
+    return args
 
 
 def _convert_angles_to_rad(args):
