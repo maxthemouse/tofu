@@ -48,14 +48,17 @@ def unireco(args):
 
 
 def make_runs(gpus, x_region, y_region, z_region, bpp, slices_per_device=None,
-              slice_memory_coeff=0.8, data_splitting_policy='one'):
+              slice_memory_coeff=0.8, data_splitting_policy='one', num_gpu_threads=1):
     def _add_region(runs, gpu_index, current, to_process, z_start, z_step):
-        z_end = z_start + current * z_step
-        runs[-1].append((gpu_index, [z_start, z_end, z_step]))
-        to_process -= current
-        z_start = z_end
+        current_per_thread = current / num_gpu_threads
+        for i in range(num_gpu_threads):
+            if i + 1 == num_gpu_threads:
+                current_per_thread += current % num_gpu_threads
+            z_end = z_start + current_per_thread * z_step
+            runs[-1].append((gpu_index, [z_start, z_end, z_step]))
+            z_start = z_end
 
-        return z_start, z_end, to_process
+        return z_start, z_end, to_process - current
 
     z_start, z_stop, z_step = z_region
     y_start, y_stop, y_step = y_region

@@ -439,6 +439,10 @@ SECTIONS['universal-reconstruction'] = {
         'default': 0.8,
         'type': restrict_value((0.01, 0.9)),
         'help': "Portion of the GPU memory used for slices (from 0.01 to 0.9) [fraction]"},
+    'num-gpu-threads': {
+        'default': 1,
+        'type': restrict_value((1, None), dtype=int),
+        'help': "Number of parallel reconstruction threads on one GPU"},
     'only-bp': {
         'default': False,
         'action': 'store_true',
