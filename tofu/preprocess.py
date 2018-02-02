@@ -323,19 +323,19 @@ def create_preprocessing_pipeline(args, graph, source=None, processing_node=None
             graph.connect_nodes(current, weight)
         current = weight
 
-    if args.projection_filter != 'none':
-        pf_first, pf_last = create_projection_filtering_pipeline(args, graph,
-                                                                 processing_node=processing_node)
-        if current:
-            graph.connect_nodes(current, pf_first)
-        current = pf_last
-
     if args.energy is not None and args.propagation_distance is not None:
         pr_first, pr_last = create_phase_retrieval_pipeline(args, graph,
                                                             processing_node=processing_node)
         if current:
             graph.connect_nodes(current, pr_first)
         current = pr_last
+
+    if args.projection_filter != 'none':
+        pf_first, pf_last = create_projection_filtering_pipeline(args, graph,
+                                                                 processing_node=processing_node)
+        if current:
+            graph.connect_nodes(current, pf_first)
+        current = pf_last
 
     return current
 
