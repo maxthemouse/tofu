@@ -204,7 +204,8 @@ def setup_graph(args, graph, x_region, y_region, region, source, gpu=None, do_ou
 
     if args.only_bp:
         first = backproject
-        graph.connect_nodes(source, backproject)
+        if source:
+            graph.connect_nodes(source, backproject)
     else:
         first = create_preprocessing_pipeline(args, graph, source=source,
                                               processing_node=gpu,
